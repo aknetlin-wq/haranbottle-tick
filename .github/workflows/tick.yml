@@ -1,0 +1,23 @@
+# 하란보틀 10분 깨우기 — 손님이 없어도 쇼핑몰이 새 주문·문의 알림을 확인하고 텔레그램에서 누른 것을 가져오게 함.
+# 부르는 주소는 공개 주소 하나뿐(비밀번호·열쇠 없음). 알림은 새 주문·문의가 있을 때만 감.
+name: tick
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: 쇼핑몰 깨우기
+        run: |
+          U="https://www.haranbottle.com/order/hb_tg.php?tick=1"
+          for i in 1 2 3; do
+            if curl -fsS -m 20 "$U"; then echo " (보통 길)"; exit 0; fi
+            # 해외에서 쇼핑몰 주소 찾기가 실패할 때: 구글 DNS 로 주소를 찾아 바로 연결
+            IP=$(curl -fsS -m 10 "https://dns.google/resolve?name=www.haranbottle.com&type=A" | grep -o '"data":"[0-9.]*"' | head -1 | cut -d'"' -f4)
+            if [ -n "$IP" ] && curl -fsS -m 20 --resolve "www.haranbottle.com:443:$IP" "$U"; then echo " (구글 DNS 길 $IP)"; exit 0; fi
+            sleep 5
+          done
+          exit 1
